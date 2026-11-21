@@ -1,0 +1,6 @@
+{
+  "name": "Chatbot UI",
+  "description": "An open-source ChatGPT-like UI with conversation folders, prompt templates, model selection, and customizable system prompts.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
