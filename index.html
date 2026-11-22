@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>عامل کدنویسی محلی</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+*{box-sizing:border-box}
+body{margin:0;font:14px/1.6 Tahoma,"Segoe UI",sans-serif;background:#1e1f22;color:#e6e6e6;height:100vh;display:flex;flex-direction:column}
+button,input,select,textarea{font:inherit;color:inherit}
+button{background:#3a3d44;border:0;border-radius:6px;padding:6px 12px;cursor:pointer}
+button:hover{background:#4a4e57}button:disabled{opacity:.4;cursor:default}
+button.pri{background:#2f8f5b}button.pri:hover{background:#38a96b}button.bad{background:#a33}
+input,select,textarea{background:#15161a;border:1px solid #3a3d44;border-radius:6px;padding:6px 8px}
+header{display:flex;gap:6px;align-items:center;padding:8px;background:#26282d;border-bottom:1px solid #3a3d44;flex-wrap:wrap}
+header input{flex:1;min-width:180px;direction:ltr}
+main{flex:1;display:flex;min-height:0}
+#tree{width:240px;overflow:auto;border-left:1px solid #3a3d44;padding:6px;direction:ltr;font:12px Consolas,monospace;background:#202226}
+#tree div{white-space:nowrap;cursor:pointer;padding:1px 4px;border-radius:3px}
+#tree div:hover{background:#2e3138}#tree .ign{opacity:.4}
+#chat{flex:1;display:flex;flex-direction:column;min-width:0}
+#log{flex:1;overflow:auto;padding:12px}
+.msg{margin:8px 0;padding:8px 12px;border-radius:8px;white-space:pre-wrap;word-wrap:break-word}
+.user{background:#2a3a55}.asst{background:#2b2d33}.err{background:#5a2a2a}
+.tool{margin:4px 0;font:12px Consolas,monospace;direction:ltr;color:#9aa;background:#222428;border-radius:6px;padding:4px 8px}
+.tool pre{margin:4px 0 0;max-height:160px;overflow:auto;white-space:pre-wrap;color:#bbb}
+.tool.error{color:#e99}
+.appr{margin:8px 0;border:1px solid #c90;border-radius:8px;padding:8px;background:#2d2a1e}
+.appr.danger{border-color:#e44;background:#3a2121}
+.appr pre{direction:ltr;text-align:left;max-height:220px;overflow:auto;background:#15161a;padding:6px;border-radius:6px;white-space:pre-wrap;margin:6px 0;font:12px Consolas,monospace}
+.msg pre{direction:ltr;text-align:left;background:#15161a;padding:8px;border-radius:6px;overflow:auto;font:12px Consolas,monospace}
+.msg code{background:#15161a;padding:0 4px;border-radius:3px;direction:ltr;unicode-bidi:embed}
+form{display:flex;gap:6px;padding:8px;border-top:1px solid #3a3d44}
+textarea{flex:1;resize:none;height:56px}
+#status{font-size:12px;color:#9a9;padding:0 12px}
+dialog{background:#26282d;color:#e6e6e6;border:1px solid #555;border-radius:10px;padding:16px;min-width:340px;max-width:92vw}
+dialog label{display:block;margin:8px 0 2px;font-size:12px;color:#aaa}dialog input,dialog select{width:100%;direction:ltr}
+#viewer{position:fixed;inset:5% 8%;background:#1b1c20;border:1px solid #555;border-radius:10px;display:none;flex-direction:column;z-index:5}
+#viewer pre{flex:1;margin:0;padding:10px;overflow:auto;direction:ltr;text-align:left;font:12px Consolas,monospace}
+</style>
+</head>
+<body>
+<header>
+  <button id="pick" title="انتخاب پوشه با پنجره ویندوز">📁 انتخاب پوشه</button>
+  <input id="root" placeholder="مسیر پوشه پروژه، مثلاً C:\Projects\myapp">
+  <button id="open" class="pri">باز کردن</button>
+  <button id="zip">⬇ ZIP</button>
+  <button id="newchat">گفتگوی جدید</button>
+  <button id="settings">⚙ تنظیمات</button>
+</header>
+<main>
+  <div id="tree"><div style="opacity:.6">پوشه‌ای باز نیست</div></div>
+  <section id="chat">
+    <div id="log"></div>
+    <div id="status"></div>
+    <div id="thumbs" style="padding:0 8px"></div>
+    <form id="form">
+      <textarea id="text" placeholder="مثلاً: پروژه را عیب‌یابی کن و خطاها را رفع کن (می‌توانی تصویر هم Paste کنی)"></textarea>
+      <div style="display:flex;flex-direction:column;gap:4px">
+        <label style="font-size:12px;white-space:nowrap" title="فقط می‌خواند و برنامه می‌دهد، چیزی را تغییر نمی‌دهد"><input type="checkbox" id="plan"> حالت برنامه‌ریزی</label>
+        <button type="button" id="attach">🖼 تصویر</button><input type="file" id="file" accept="image/png,image/jpeg,image/gif,image/webp" multiple style="display:none">
+      </div>
+      <button class="pri" id="sendbtn">ارسال</button>
+      <button type="button" class="bad" id="stop" disabled>توقف</button>
+    </form>
+  </section>
+</main>
+<div id="viewer"><div style="padding:6px;display:flex;justify-content:space-between"><b id="vtitle" dir="ltr"></b><span><button id="veditor">باز کردن در ویرایشگر (VS Code / برنامه پیش‌فرض)</button> <button id="vclose">بستن</button></span></div><pre id="vbody"></pre></div>
+
+<dialog id="dlg">
+  <h3 style="margin-top:0">تنظیمات مدل</h3>
+  <label>سرویس آماده</label>
+  <select id="preset">
+    <option value="">— انتخاب —</option>
+    <option value="https://generativelanguage.googleapis.com/v1beta/openai|gemini-2.5-flash">Google Gemini</option>
+    <option value="https://api.openai.com/v1|gpt-4.1-mini">OpenAI</option>
+    <option value="https://openrouter.ai/api/v1|openai/gpt-4.1-mini">OpenRouter</option>
+    <option value="http://127.0.0.1:11434/v1|qwen2.5-coder">Ollama (محلی)</option>
+  </select>
+  <label>Base URL (سازگار با OpenAI)</label><input id="baseUrl">
+  <label>کلید API <span id="keyhint"></span></label><input id="apiKey" type="password" autocomplete="off">
+  <label>نام مدل (باید از Tool/Function calling پشتیبانی کند)</label><input id="model">
+  <label>پروکسی HTTP (اختیاری، مثل http://127.0.0.1:10809)</label><input id="proxy">
+  <label>پیشرفته (JSON): سرورهای MCP و Hooks</label>
+  <textarea id="adv" rows="8" spellcheck="false" style="width:100%;direction:ltr;font:12px Consolas,monospace" placeholder='{"mcpServers":{"fs":{"command":"npx","args":["-y","@modelcontextprotocol/server-filesystem","C:\\proj"]}},"hooks":{"PreToolUse":[{"matcher":"run_command","command":"node check.js"}]}}'></textarea>
+  <label style="display:flex;gap:6px;align-items:center;color:#e6e6e6"><input id="auto" type="checkbox" style="width:auto"> تأیید خودکار نوشتن/ویرایش فایل (فرمان‌ها همیشه تأیید می‌خواهند)</label>
+  <div style="margin-top:12px;display:flex;gap:6px;justify-content:flex-end"><button id="dcancel">انصراف</button><button id="dsave" class="pri">ذخیره</button></div>
+</dialog>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var logEl = $('log'), treeEl = $('tree'), cfg = {}, root = null, running = false, images = [], lastPlan = false, viewing = '';
+
+  function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+  function md(s) {
+    var parts = String(s).split('```');
+    return parts.map(function (p, i) {
+      if (i % 2) return '<pre>' + esc(p.replace(/^[^\n]*\n/, '')) + '</pre>';
+      return esc(p).replace(/`([^`\n]+)`/g, '<code>$1</code>').replace(/\*\*([^*\n]+)\*\*/g, '<b>$1</b>');
+    }).join('');
+  }
+  function api(path, method, body) {
+    return fetch(path, { method: method || 'GET', headers: { 'content-type': 'application/json' }, body: body ? JSON.stringify(body) : undefined, credentials: 'same-origin' })
+      .then(function (r) { return r.json().catch(function () { return {}; }).then(function (d) { if (!r.ok) throw new Error(d.error || ('HTTP ' + r.status)); return d; }); });
+  }
+  function add(html, cls) { var d = document.createElement('div'); d.className = cls; d.innerHTML = html; logEl.appendChild(d); logEl.scrollTop = logEl.scrollHeight; return d; }
+  function setRunning(v) { running = v; $('stop').disabled = !v; $('sendbtn').disabled = v; $('status').textContent = v ? '⏳ عامل در حال کار…' : ''; }
+  function setRoot(r) { root = r; $('root').value = r || ''; if (r) loadDir('.', treeEl, true); else treeEl.innerHTML = '<div style="opacity:.6">پوشه‌ای باز نیست</div>'; }
+
+  function loadDir(rel, container, clear) {
+    api('/api/ls?path=' + encodeURIComponent(rel)).then(function (d) {
+      if (clear) container.innerHTML = '';
+      d.items.forEach(function (it) {
+        var row = document.createElement('div'); row.textContent = (it.dir ? '📁 ' : '📄 ') + it.name; if (it.ignored) row.className = 'ign';
+        var childPath = (rel === '.' ? '' : rel + '/') + it.name;
+        var box = null;
+        row.onclick = function (e) {
+          e.stopPropagation();
+          if (it.dir) {
+            if (box) { box.remove(); box = null; return; }
+            box = document.createElement('div'); box.style.paddingLeft = '14px'; row.after(box); loadDir(childPath, box, true);
+          } else openFile(childPath);
+        };
+        container.appendChild(row);
+      });
+    }).catch(function (e) { container.textContent = e.message; });
+  }
+  function openFile(p) {
+    viewing = p;
+    api('/api/file?path=' + encodeURIComponent(p)).then(function (d) { $('vtitle').textContent = d.path; $('vbody').textContent = d.content; $('viewer').style.display = 'flex'; })
+      .catch(function (e) { alert(e.message); });
+  }
+  $('vclose').onclick = function () { $('viewer').style.display = 'none'; };
+  $('veditor').onclick = function () { api('/api/open-editor', 'POST', { path: viewing }).catch(function (e) { alert(e.message); }); };
+
+  var toolBoxes = {}, apprBoxes = {};
+  function onEvent(ev) {
+    switch (ev.type) {
+      case 'hello': cfg = ev.config || {}; setRoot(ev.root); setRunning(!!ev.running); if (!cfg.hasKey) $('status').textContent = '⚠ ابتدا از «تنظیمات» کلید API را وارد کن.'; break;
+      case 'reset': logEl.innerHTML = ''; toolBoxes = {}; apprBoxes = {}; if (ev.root !== undefined && ev.root !== root) setRoot(ev.root); break;
+      case 'status': setRunning(ev.running); if (!ev.running && root) { loadDir('.', treeEl, true); }
+        if (!ev.running && ev.plan) { var pb = add('<b>برنامه آماده است.</b> ', 'appr'); var go = document.createElement('button'); go.className = 'pri'; go.textContent = 'تأیید برنامه و اجرا'; go.onclick = function () { pb.remove(); $('plan').checked = false; sendNow('برنامه تأیید شد؛ آن را اجرا کن.', false); }; pb.appendChild(go); }
+        break;
+      case 'user': var ub = add(md(ev.text), 'msg user'); (ev.images || []).forEach(function (u) { var im = document.createElement('img'); im.src = u; im.style.cssText = 'max-height:90px;margin:4px;border-radius:6px;display:block'; ub.appendChild(im); }); break;
+      case 'info': add(esc(ev.text), 'tool'); break;
+      case 'assistant': add(md(ev.text), 'msg asst'); break;
+      case 'error': add(esc(ev.text), 'msg err'); break;
+      case 'tool_start': toolBoxes[ev.id] = add('🔧 ' + esc(ev.name) + ' <span style="color:#fff">' + esc(ev.summary || '') + '</span>', 'tool'); break;
+      case 'tool_result': var tb = toolBoxes[ev.id]; if (tb) { if (ev.error) tb.className = 'tool error'; var pre = document.createElement('pre'); pre.textContent = ev.text; tb.appendChild(pre); } break;
+      case 'approval':
+        var box = add('<b>' + (ev.danger ? '⚠ فرمان پرخطر — ' : '') + 'درخواست تأیید: ' + esc(ev.title) + '</b><pre>' + esc(ev.body) + '</pre>', 'appr' + (ev.danger ? ' danger' : ''));
+        var ok = document.createElement('button'); ok.className = 'pri'; ok.textContent = 'تأیید و اجرا';
+        var no = document.createElement('button'); no.className = 'bad'; no.textContent = 'رد'; no.style.marginRight = '6px';
+        ok.onclick = function () { api('/api/approve', 'POST', { id: ev.id, approve: true }); };
+        no.onclick = function () { api('/api/approve', 'POST', { id: ev.id, approve: false }); };
+        box.appendChild(ok); box.appendChild(no); apprBoxes[ev.id] = box; break;
+      case 'approval_resolved':
+        var b = apprBoxes[ev.id]; if (b) { Array.prototype.slice.call(b.querySelectorAll('button')).forEach(function (x) { x.remove(); }); var t = document.createElement('div'); t.textContent = ev.approved ? '✔ تأیید شد' : '✖ رد شد'; b.appendChild(t); } break;
+    }
+  }
+  var es = new EventSource('/api/events');
+  es.onmessage = function (m) { try { onEvent(JSON.parse(m.data)); } catch (e) { /* ignore */ } };
+  es.onerror = function () { $('status').textContent = 'اتصال به برنامه قطع شد؛ آیا پنجره سیاه (start.bat) هنوز باز است؟'; };
+
+  $('open').onclick = function () { api('/api/open', 'POST', { path: $('root').value }).then(function (d) { setRoot(d.root); }).catch(function (e) { alert(e.message); }); };
+  $('pick').onclick = function () { api('/api/pick-folder', 'POST').then(function (d) { if (d.path) { $('root').value = d.path; $('open').click(); } }).catch(function (e) { alert(e.message); }); };
+  $('zip').onclick = function () { if (!root) return alert('ابتدا پوشه را باز کن.'); location.href = '/api/zip'; };
+  $('newchat').onclick = function () { api('/api/new', 'POST').catch(function (e) { alert(e.message); }); };
+  $('stop').onclick = function () { api('/api/stop', 'POST'); };
+  function sendNow(t, plan) {
+    var imgs = images.slice(); images = []; renderThumbs();
+    api('/api/send', 'POST', { text: t, images: imgs, plan: !!plan }).then(function () { $('text').value = ''; }).catch(function (e2) { add(esc(e2.message), 'msg err'); });
+  }
+  $('form').onsubmit = function (e) { e.preventDefault(); var t = $('text').value.trim(); if (!t) return; sendNow(t, $('plan').checked); };
+  function renderThumbs() { $('thumbs').innerHTML = ''; images.forEach(function (u, i) { var im = document.createElement('img'); im.src = u; im.title = 'حذف'; im.style.cssText = 'height:48px;margin:2px;border-radius:4px;cursor:pointer'; im.onclick = function () { images.splice(i, 1); renderThumbs(); }; $('thumbs').appendChild(im); }); }
+  function addFile(f) {
+    if (!f || !/^image\/(png|jpeg|gif|webp)$/.test(f.type) || f.size > 4 * 1024 * 1024 || images.length >= 4) return;
+    var r = new FileReader(); r.onload = function () { images.push(r.result); renderThumbs(); }; r.readAsDataURL(f);
+  }
+  $('attach').onclick = function () { $('file').click(); };
+  $('file').onchange = function () { Array.prototype.forEach.call(this.files, addFile); this.value = ''; };
+  $('text').onpaste = function (e) { var items = (e.clipboardData && e.clipboardData.items) || []; Array.prototype.forEach.call(items, function (it) { if (it.kind === 'file') addFile(it.getAsFile()); }); };
+  $('text').onkeydown = function (e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); $('form').onsubmit(e); } };
+
+  $('settings').onclick = function () {
+    $('baseUrl').value = cfg.baseUrl || ''; $('model').value = cfg.model || ''; $('proxy').value = cfg.proxy || ''; $('auto').checked = !!cfg.autoApproveEdits; $('apiKey').value = ''; $('adv').value = cfg.advanced || '';
+    $('keyhint').textContent = cfg.hasKey ? '(ذخیره شده؛ خالی بگذار تا تغییر نکند)' : '';
+    $('dlg').showModal ? $('dlg').showModal() : $('dlg').setAttribute('open', '');
+  };
+  $('preset').onchange = function () { var v = this.value.split('|'); if (v[0]) { $('baseUrl').value = v[0]; $('model').value = v[1]; } };
+  $('dcancel').onclick = function () { $('dlg').close(); };
+  $('dsave').onclick = function () {
+    api('/api/config', 'POST', { baseUrl: $('baseUrl').value, model: $('model').value, proxy: $('proxy').value, apiKey: $('apiKey').value, autoApproveEdits: $('auto').checked, advanced: $('adv').value })
+      .then(function (d) { cfg = d.config; $('dlg').close(); $('status').textContent = '✔ ذخیره شد'; }).catch(function (e) { alert(e.message); });
+  };
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,29 @@
+{
+  "name": "chatbot-local-agent",
+  "productName": "ChatbotLocalAgent",
+  "version": "1.0.0",
+  "description": "Local coding agent (Claude-Code-like) for Windows 7+",
+  "main": "main.js",
+  "author": "you",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "dev:server": "node server.js",
+    "test": "node test/e2e.mjs",
+    "dist": "electron-builder --win portable nsis --x64 --ia32 --publish never"
+  },
+  "devDependencies": {
+    "electron": "22.3.27",
+    "electron-builder": "24.13.3"
+  },
+  "build": {
+    "appId": "local.chatbot.agent",
+    "productName": "ChatbotLocalAgent",
+    "directories": { "output": "dist" },
+    "files": ["main.js", "server.js", "diagnostics.js", "zip.js", "index.html", "package.json"],
+    "asar": true,
+    "win": { "target": ["portable", "nsis"] },
+    "portable": { "artifactName": "${productName}-portable-${arch}.exe" },
+    "nsis": { "oneClick": false, "allowToChangeInstallationDirectory": true, "perMachine": false, "artifactName": "${productName}-Setup-${arch}.exe" }
+  }
+}
